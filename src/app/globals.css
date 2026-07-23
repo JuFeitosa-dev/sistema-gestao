@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* Identidade visual do Laboratório de Criatividade */
+@theme {
+  --color-roxo: #301e57;
+  --color-roxo-escuro: #241546;
+  --color-magenta: #e5087e;
+  --color-grafite: #525251;
+
+  --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: #f7f7f8;
+  color: var(--color-grafite);
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  color: var(--color-roxo);
+}
