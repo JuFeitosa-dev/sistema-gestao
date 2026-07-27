@@ -38,6 +38,8 @@ export type Profile = {
   role: Role;
 };
 
+export type Member = { id: string; full_name: string | null };
+
 export function canManage(role: Role): boolean {
   return role === "admin" || role === "gestor";
 }

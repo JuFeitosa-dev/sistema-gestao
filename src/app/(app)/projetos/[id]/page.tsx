@@ -10,7 +10,7 @@ import {
 } from "@/lib/types";
 import { formatDuration } from "@/lib/format";
 import Badge from "@/components/Badge";
-import TaskItem from "@/components/TaskItem";
+import TaskItem, { type Task, type SubtaskData } from "@/components/TaskItem";
 import NewTaskForm from "@/components/NewTaskForm";
 import ProjectActions from "@/components/ProjectActions";
 
@@ -36,7 +36,7 @@ export default async function ProjectDetailPage({
       supabase
         .from("tasks")
         .select(
-          "id, title, description, status, project_id, due_date, estimate_hours, assignee_id, profiles(full_name)",
+          "id, title, description, status, project_id, due_date, estimate_hours, assignee_id, parent_task_id, profiles(full_name)",
         )
         .eq("project_id", id)
         .order("created_at", { ascending: true }),
@@ -69,6 +69,34 @@ export default async function ProjectDetailPage({
   const client = project.clients as unknown as { name: string } | null;
   const manage = canManage(profile.role);
   const totalSeconds = Object.values(secondsByTask).reduce((a, b) => a + b, 0);
+
+  // Monta as tarefas em objetos e separa tarefas-mãe de subtarefas.
+  type Row = Task & { parent_task_id: string | null };
+  const allTasks: Row[] = (tasks ?? []).map((t) => {
+    const assignee = t.profiles as unknown as { full_name: string | null } | null;
+    return {
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      status: t.status as TaskStatus,
+      project_id: t.project_id,
+      due_date: t.due_date,
+      estimate_hours: t.estimate_hours,
+      assigneeName: assignee?.full_name ?? null,
+      assignee_id: t.assignee_id,
+      parent_task_id: t.parent_task_id as string | null,
+    };
+  });
+
+  const childrenByParent = new Map<string, Row[]>();
+  for (const t of allTasks) {
+    if (t.parent_task_id) {
+      const list = childrenByParent.get(t.parent_task_id) ?? [];
+      list.push(t);
+      childrenByParent.set(t.parent_task_id, list);
+    }
+  }
+  const parents = allTasks.filter((t) => !t.parent_task_id);
 
   return (
     <div className="space-y-6">
@@ -118,31 +146,30 @@ export default async function ProjectDetailPage({
         {manage && <NewTaskForm projectId={project.id} members={members ?? []} />}
       </div>
 
-      {(tasks?.length ?? 0) === 0 ? (
+      {parents.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-grafite/70">
           Nenhuma tarefa ainda.
           {manage && " Clique em “Nova tarefa”."}
         </div>
       ) : (
         <div className="space-y-3">
-          {tasks?.map((t) => {
-            const assignee = t.profiles as unknown as { full_name: string | null } | null;
+          {parents.map((t) => {
+            const subtasks: SubtaskData[] = (
+              childrenByParent.get(t.id) ?? []
+            ).map((c) => ({
+              task: c,
+              seconds: secondsByTask[c.id] ?? 0,
+              isActive: activeTaskId === c.id,
+            }));
             return (
               <TaskItem
                 key={t.id}
-                task={{
-                  id: t.id,
-                  title: t.title,
-                  description: t.description,
-                  status: t.status as TaskStatus,
-                  project_id: t.project_id,
-                  due_date: t.due_date,
-                  estimate_hours: t.estimate_hours,
-                  assigneeName: assignee?.full_name ?? null,
-                }}
+                task={t}
                 seconds={secondsByTask[t.id] ?? 0}
                 isActive={activeTaskId === t.id}
                 canManage={manage}
+                members={members ?? []}
+                subtasks={subtasks}
               />
             );
           })}

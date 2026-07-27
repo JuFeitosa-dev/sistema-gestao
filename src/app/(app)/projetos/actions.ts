@@ -71,7 +71,7 @@ export async function createClientRecord(formData: FormData) {
   revalidatePath("/projetos");
 }
 
-/** Cria uma tarefa dentro de um projeto. */
+/** Cria uma tarefa (ou subtarefa) dentro de um projeto. */
 export async function createTask(formData: FormData) {
   const profile = await getCurrentProfile();
   const supabase = await createClient();
@@ -82,6 +82,7 @@ export async function createTask(formData: FormData) {
   const assigneeId = String(formData.get("assignee_id") ?? "") || null;
   const estimateRaw = String(formData.get("estimate_hours") ?? "").trim();
   const dueDate = String(formData.get("due_date") ?? "") || null;
+  const parentTaskId = String(formData.get("parent_task_id") ?? "") || null;
 
   if (!projectId || !title) return;
 
@@ -93,9 +94,39 @@ export async function createTask(formData: FormData) {
     assignee_id: assigneeId,
     estimate_hours: estimateRaw ? Number(estimateRaw) : null,
     due_date: dueDate,
+    parent_task_id: parentTaskId,
   });
 
   revalidatePath(`/projetos/${projectId}`);
+  revalidatePath("/tarefas");
+}
+
+/** Edita os dados de uma tarefa existente. */
+export async function updateTask(formData: FormData) {
+  const supabase = await createClient();
+
+  const taskId = String(formData.get("task_id") ?? "");
+  const projectId = String(formData.get("project_id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const assigneeId = String(formData.get("assignee_id") ?? "") || null;
+  const estimateRaw = String(formData.get("estimate_hours") ?? "").trim();
+  const dueDate = String(formData.get("due_date") ?? "") || null;
+
+  if (!taskId || !title) return;
+
+  await supabase
+    .from("tasks")
+    .update({
+      title,
+      description,
+      assignee_id: assigneeId,
+      estimate_hours: estimateRaw ? Number(estimateRaw) : null,
+      due_date: dueDate,
+    })
+    .eq("id", taskId);
+
+  if (projectId) revalidatePath(`/projetos/${projectId}`);
   revalidatePath("/tarefas");
 }
 

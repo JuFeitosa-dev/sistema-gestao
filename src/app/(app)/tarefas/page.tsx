@@ -27,7 +27,7 @@ export default async function TarefasPage({
   let query = supabase
     .from("tasks")
     .select(
-      "id, title, description, status, project_id, due_date, estimate_hours, assignee_id, projects(name), profiles(full_name)",
+      "id, title, description, status, project_id, due_date, estimate_hours, assignee_id, parent_task_id, projects(name), profiles(full_name)",
     )
     .order("created_at", { ascending: false });
 
@@ -113,11 +113,14 @@ export default async function TarefasPage({
                   due_date: t.due_date,
                   estimate_hours: t.estimate_hours,
                   assigneeName: assignee?.full_name ?? null,
+                  assignee_id: t.assignee_id,
                 }}
                 seconds={secondsByTask[t.id] ?? 0}
                 isActive={activeTaskId === t.id}
                 canManage={manage}
+                members={members ?? []}
                 projectName={proj?.name}
+                isSubtask={!!t.parent_task_id}
               />
             );
           })}

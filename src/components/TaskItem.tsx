@@ -7,17 +7,22 @@ import {
   addManualEntry,
   setTaskStatus,
 } from "@/app/(app)/actions";
-import { deleteTask } from "@/app/(app)/projetos/actions";
+import {
+  deleteTask,
+  createTask,
+  updateTask,
+} from "@/app/(app)/projetos/actions";
 import { formatDuration, formatDate } from "@/lib/format";
 import {
   TASK_STATUS_LABELS,
   HOUR_KIND_LABELS,
   type TaskStatus,
   type HourKind,
+  type Member,
 } from "@/lib/types";
 import Badge from "./Badge";
 
-type Task = {
+export type Task = {
   id: string;
   title: string;
   description: string | null;
@@ -26,37 +31,59 @@ type Task = {
   due_date: string | null;
   estimate_hours: number | null;
   assigneeName: string | null;
+  assignee_id: string | null;
+};
+
+export type SubtaskData = {
+  task: Task;
+  seconds: number;
+  isActive: boolean;
 };
 
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+const inputClass =
+  "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-magenta focus:outline-none";
+
 export default function TaskItem({
   task,
   seconds,
   isActive,
   canManage,
+  members,
   projectName,
+  subtasks,
+  isSubtask = false,
 }: {
   task: Task;
   seconds: number;
   isActive: boolean;
   canManage: boolean;
+  members: Member[];
   projectName?: string;
+  subtasks?: SubtaskData[];
+  isSubtask?: boolean;
 }) {
   const [pending, startT] = useTransition();
   const [kind, setKind] = useState<HourKind>("projeto");
   const [manualOpen, setManualOpen] = useState(false);
-
-  const inputClass =
-    "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-magenta focus:outline-none";
+  const [editOpen, setEditOpen] = useState(false);
+  const [subtaskOpen, setSubtaskOpen] = useState(false);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
+    <div
+      className={
+        isSubtask
+          ? "bg-white rounded-lg border border-gray-200 p-3"
+          : "bg-white rounded-xl border border-gray-200 p-4"
+      }
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
+            {isSubtask && <span className="text-grafite/40">↳</span>}
             <h3 className="text-base leading-tight">{task.title}</h3>
             <Badge variant={task.status}>{TASK_STATUS_LABELS[task.status]}</Badge>
           </div>
@@ -79,21 +106,112 @@ export default function TaskItem({
         </div>
 
         {canManage && (
-          <button
-            onClick={() =>
-              startT(() => deleteTask(task.id, task.project_id))
-            }
-            disabled={pending}
-            title="Apagar tarefa"
-            className="text-grafite/40 hover:text-magenta text-sm shrink-0"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setEditOpen((v) => !v)}
+              title="Editar tarefa"
+              className="text-grafite/50 hover:text-roxo text-sm"
+            >
+              ✏️
+            </button>
+            <button
+              onClick={() => startT(() => deleteTask(task.id, task.project_id))}
+              disabled={pending}
+              title="Apagar tarefa"
+              className="text-grafite/40 hover:text-magenta text-sm"
+            >
+              ✕
+            </button>
+          </div>
         )}
       </div>
 
+      {/* Formulário de edição */}
+      {editOpen && (
+        <form
+          action={async (fd) => {
+            await updateTask(fd);
+            setEditOpen(false);
+          }}
+          className="mt-3 pt-3 border-t border-gray-100 space-y-3"
+        >
+          <input type="hidden" name="task_id" value={task.id} />
+          <input type="hidden" name="project_id" value={task.project_id} />
+          <div>
+            <label className="block text-xs mb-1">Título</label>
+            <input
+              name="title"
+              defaultValue={task.title}
+              required
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="block text-xs mb-1">Descrição</label>
+            <textarea
+              name="description"
+              rows={2}
+              defaultValue={task.description ?? ""}
+              className={inputClass}
+            />
+          </div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs mb-1">Responsável</label>
+              <select
+                name="assignee_id"
+                defaultValue={task.assignee_id ?? ""}
+                className={inputClass}
+              >
+                <option value="">— Ninguém —</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.full_name ?? "Sem nome"}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs mb-1">Estimativa (h)</label>
+              <input
+                type="number"
+                step="0.5"
+                min="0"
+                name="estimate_hours"
+                defaultValue={task.estimate_hours ?? ""}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="block text-xs mb-1">Prazo</label>
+              <input
+                type="date"
+                name="due_date"
+                defaultValue={task.due_date ?? ""}
+                className={inputClass}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="rounded-lg bg-magenta text-white px-3 py-1.5 text-sm hover:opacity-90"
+            >
+              Salvar alterações
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditOpen(false)}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-grafite hover:bg-gray-50"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Controles: cronômetro, manual, status, subtarefa */}
       <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-gray-100">
-        {/* Cronômetro */}
         {isActive ? (
           <button
             onClick={() => startT(() => stopTimer())}
@@ -137,7 +255,15 @@ export default function TaskItem({
           Lançar manual
         </button>
 
-        {/* Status */}
+        {!isSubtask && canManage && (
+          <button
+            onClick={() => setSubtaskOpen((v) => !v)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-grafite hover:bg-gray-50"
+          >
+            + Subtarefa
+          </button>
+        )}
+
         <select
           value={task.status}
           onChange={(e) =>
@@ -154,6 +280,7 @@ export default function TaskItem({
         </select>
       </div>
 
+      {/* Formulário de lançamento manual */}
       {manualOpen && (
         <form
           action={async (fd) => {
@@ -221,6 +348,83 @@ export default function TaskItem({
             </button>
           </div>
         </form>
+      )}
+
+      {/* Formulário de nova subtarefa */}
+      {subtaskOpen && !isSubtask && (
+        <form
+          action={async (fd) => {
+            await createTask(fd);
+            setSubtaskOpen(false);
+          }}
+          className="mt-3 pt-3 border-t border-gray-100 space-y-3"
+        >
+          <input type="hidden" name="project_id" value={task.project_id} />
+          <input type="hidden" name="parent_task_id" value={task.id} />
+          <div>
+            <label className="block text-xs mb-1">Título da subtarefa</label>
+            <input name="title" required className={inputClass} autoFocus />
+          </div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs mb-1">Responsável</label>
+              <select name="assignee_id" className={inputClass}>
+                <option value="">— Ninguém —</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.full_name ?? "Sem nome"}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs mb-1">Estimativa (h)</label>
+              <input
+                type="number"
+                step="0.5"
+                min="0"
+                name="estimate_hours"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="block text-xs mb-1">Prazo</label>
+              <input type="date" name="due_date" className={inputClass} />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="rounded-lg bg-magenta text-white px-3 py-1.5 text-sm hover:opacity-90"
+            >
+              Salvar subtarefa
+            </button>
+            <button
+              type="button"
+              onClick={() => setSubtaskOpen(false)}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-grafite hover:bg-gray-50"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Subtarefas */}
+      {subtasks && subtasks.length > 0 && (
+        <div className="mt-3 space-y-2 pl-3 border-l-2 border-gray-100">
+          {subtasks.map((s) => (
+            <TaskItem
+              key={s.task.id}
+              task={s.task}
+              seconds={s.seconds}
+              isActive={s.isActive}
+              canManage={canManage}
+              members={members}
+              isSubtask
+            />
+          ))}
+        </div>
       )}
     </div>
   );
