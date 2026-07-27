@@ -154,22 +154,28 @@ export default async function ProjectDetailPage({
       ) : (
         <div className="space-y-3">
           {parents.map((t) => {
-            const subtasks: SubtaskData[] = (
-              childrenByParent.get(t.id) ?? []
-            ).map((c) => ({
+            const children = childrenByParent.get(t.id) ?? [];
+            const subtasks: SubtaskData[] = children.map((c) => ({
               task: c,
               seconds: secondsByTask[c.id] ?? 0,
               isActive: activeTaskId === c.id,
             }));
+            // Tempo da mãe = tempo próprio + soma das subtarefas.
+            const childrenSeconds = children.reduce(
+              (sum, c) => sum + (secondsByTask[c.id] ?? 0),
+              0,
+            );
+            const rolledUpSeconds = (secondsByTask[t.id] ?? 0) + childrenSeconds;
             return (
               <TaskItem
                 key={t.id}
                 task={t}
-                seconds={secondsByTask[t.id] ?? 0}
+                seconds={rolledUpSeconds}
                 isActive={activeTaskId === t.id}
                 canManage={manage}
                 members={members ?? []}
                 subtasks={subtasks}
+                includesSubtasks={children.length > 0}
               />
             );
           })}

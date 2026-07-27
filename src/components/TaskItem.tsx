@@ -56,6 +56,7 @@ export default function TaskItem({
   projectName,
   subtasks,
   isSubtask = false,
+  includesSubtasks = false,
 }: {
   task: Task;
   seconds: number;
@@ -65,6 +66,7 @@ export default function TaskItem({
   projectName?: string;
   subtasks?: SubtaskData[];
   isSubtask?: boolean;
+  includesSubtasks?: boolean;
 }) {
   const [pending, startT] = useTransition();
   const [kind, setKind] = useState<HourKind>("projeto");
@@ -101,6 +103,12 @@ export default function TaskItem({
             )}
             <span className="font-medium text-roxo">
               ⏱ {formatDuration(seconds)}
+              {includesSubtasks && (
+                <span className="text-grafite/50 font-normal">
+                  {" "}
+                  (inclui subtarefas)
+                </span>
+              )}
             </span>
           </div>
         </div>
