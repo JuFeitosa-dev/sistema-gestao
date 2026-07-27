@@ -12,7 +12,7 @@ export default async function TarefasPage({
   const profile = await getCurrentProfile();
   const supabase = await createClient();
 
-  const [{ data: projects }, { data: members }, { data: activeEntry }] =
+  const [{ data: projects }, { data: members }, { data: activeRows }] =
     await Promise.all([
       supabase.from("projects").select("id, name").order("name"),
       supabase.from("profiles").select("id, full_name").order("full_name"),
@@ -20,8 +20,7 @@ export default async function TarefasPage({
         .from("time_entries")
         .select("task_id")
         .is("ended_at", null)
-        .eq("user_id", profile.id)
-        .maybeSingle(),
+        .eq("user_id", profile.id),
     ]);
 
   let query = supabase
@@ -51,7 +50,7 @@ export default async function TarefasPage({
     }
   }
 
-  const activeTaskId = activeEntry?.task_id ?? null;
+  const activeTaskIds = new Set((activeRows ?? []).map((r) => r.task_id));
   const manage = canManage(profile.role);
 
   const selectClass =
@@ -116,7 +115,7 @@ export default async function TarefasPage({
                   assignee_id: t.assignee_id,
                 }}
                 seconds={secondsByTask[t.id] ?? 0}
-                isActive={activeTaskId === t.id}
+                isActive={activeTaskIds.has(t.id)}
                 canManage={manage}
                 members={members ?? []}
                 projectName={proj?.name}

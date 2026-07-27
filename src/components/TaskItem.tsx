@@ -237,7 +237,7 @@ export default function TaskItem({
       <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-gray-100">
         {isActive ? (
           <button
-            onClick={() => startT(() => stopTimer())}
+            onClick={() => startT(() => stopTimer(task.id))}
             disabled={pending}
             className="rounded-lg bg-roxo text-white px-3 py-1.5 text-sm hover:opacity-90 disabled:opacity-60"
           >

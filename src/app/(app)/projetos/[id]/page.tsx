@@ -32,7 +32,7 @@ export default async function ProjectDetailPage({
 
   if (!project) notFound();
 
-  const [{ data: tasks }, { data: members }, { data: activeEntry }] =
+  const [{ data: tasks }, { data: members }, { data: activeRows }] =
     await Promise.all([
       supabase
         .from("tasks")
@@ -46,8 +46,7 @@ export default async function ProjectDetailPage({
         .from("time_entries")
         .select("task_id")
         .is("ended_at", null)
-        .eq("user_id", profile.id)
-        .maybeSingle(),
+        .eq("user_id", profile.id),
     ]);
 
   const taskIds = (tasks ?? []).map((t) => t.id);
@@ -65,7 +64,7 @@ export default async function ProjectDetailPage({
     }
   }
 
-  const activeTaskId = activeEntry?.task_id ?? null;
+  const activeTaskIds = new Set((activeRows ?? []).map((r) => r.task_id));
   const area = project.areas as unknown as { name: string } | null;
   const client = project.clients as unknown as { name: string } | null;
   const manage = canManage(profile.role);
@@ -161,7 +160,7 @@ export default async function ProjectDetailPage({
             const subtasks: SubtaskData[] = children.map((c) => ({
               task: c,
               seconds: secondsByTask[c.id] ?? 0,
-              isActive: activeTaskId === c.id,
+              isActive: activeTaskIds.has(c.id),
             }));
             // Tempo da mãe = tempo próprio + soma das subtarefas.
             const childrenSeconds = children.reduce(
@@ -172,7 +171,7 @@ export default async function ProjectDetailPage({
             return {
               task: t,
               seconds: rolledUpSeconds,
-              isActive: activeTaskId === t.id,
+              isActive: activeTaskIds.has(t.id),
               includesSubtasks: children.length > 0,
               subtasks,
             };

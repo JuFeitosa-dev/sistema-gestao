@@ -13,30 +13,53 @@ export async function signOut() {
   redirect("/login");
 }
 
-/** Inicia o cronômetro numa tarefa. Para automaticamente qualquer outro ativo. */
+/**
+ * Inicia o cronômetro numa tarefa. Vários cronômetros podem rodar ao mesmo
+ * tempo (tarefas diferentes, em paralelo). Não para os outros.
+ * Só evita duplicar: se essa tarefa já estiver com o cronômetro rodando para
+ * este usuário (ex.: em outro computador), não cria um segundo.
+ */
 export async function startTimer(taskId: string, kind: HourKind) {
   const profile = await getCurrentProfile();
   const supabase = await createClient();
 
-  // Garante "um cronômetro ativo por vez": encerra o que estiver aberto.
-  await supabase
+  const { data: existing } = await supabase
     .from("time_entries")
-    .update({ ended_at: new Date().toISOString() })
+    .select("id")
     .is("ended_at", null)
-    .eq("user_id", profile.id);
+    .eq("user_id", profile.id)
+    .eq("task_id", taskId)
+    .maybeSingle();
 
-  await supabase.from("time_entries").insert({
-    org_id: profile.org_id,
-    user_id: profile.id,
-    task_id: taskId,
-    kind,
-  });
+  if (!existing) {
+    await supabase.from("time_entries").insert({
+      org_id: profile.org_id,
+      user_id: profile.id,
+      task_id: taskId,
+      kind,
+    });
+  }
 
   revalidatePath("/", "layout");
 }
 
-/** Para o cronômetro ativo do usuário. */
-export async function stopTimer() {
+/** Para o cronômetro de UMA tarefa específica do usuário. */
+export async function stopTimer(taskId: string) {
+  const profile = await getCurrentProfile();
+  const supabase = await createClient();
+
+  await supabase
+    .from("time_entries")
+    .update({ ended_at: new Date().toISOString() })
+    .is("ended_at", null)
+    .eq("user_id", profile.id)
+    .eq("task_id", taskId);
+
+  revalidatePath("/", "layout");
+}
+
+/** Para todos os cronômetros ativos do usuário de uma vez. */
+export async function stopAllTimers() {
   const profile = await getCurrentProfile();
   const supabase = await createClient();
 
