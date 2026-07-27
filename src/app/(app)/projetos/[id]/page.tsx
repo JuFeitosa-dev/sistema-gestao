@@ -10,7 +10,8 @@ import {
 } from "@/lib/types";
 import { formatDuration } from "@/lib/format";
 import Badge from "@/components/Badge";
-import TaskItem, { type Task, type SubtaskData } from "@/components/TaskItem";
+import { type Task, type SubtaskData } from "@/components/TaskItem";
+import ProjectTaskList from "@/components/ProjectTaskList";
 import NewTaskForm from "@/components/NewTaskForm";
 import ProjectActions from "@/components/ProjectActions";
 
@@ -152,8 +153,10 @@ export default async function ProjectDetailPage({
           {manage && " Clique em “Nova tarefa”."}
         </div>
       ) : (
-        <div className="space-y-3">
-          {parents.map((t) => {
+        <ProjectTaskList
+          canManage={manage}
+          members={members ?? []}
+          items={parents.map((t) => {
             const children = childrenByParent.get(t.id) ?? [];
             const subtasks: SubtaskData[] = children.map((c) => ({
               task: c,
@@ -166,20 +169,15 @@ export default async function ProjectDetailPage({
               0,
             );
             const rolledUpSeconds = (secondsByTask[t.id] ?? 0) + childrenSeconds;
-            return (
-              <TaskItem
-                key={t.id}
-                task={t}
-                seconds={rolledUpSeconds}
-                isActive={activeTaskId === t.id}
-                canManage={manage}
-                members={members ?? []}
-                subtasks={subtasks}
-                includesSubtasks={children.length > 0}
-              />
-            );
+            return {
+              task: t,
+              seconds: rolledUpSeconds,
+              isActive: activeTaskId === t.id,
+              includesSubtasks: children.length > 0,
+              subtasks,
+            };
           })}
-        </div>
+        />
       )}
     </div>
   );

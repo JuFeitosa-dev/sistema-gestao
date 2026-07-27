@@ -57,6 +57,8 @@ export default function TaskItem({
   subtasks,
   isSubtask = false,
   includesSubtasks = false,
+  collapsed = false,
+  onToggleCollapse,
 }: {
   task: Task;
   seconds: number;
@@ -67,12 +69,27 @@ export default function TaskItem({
   subtasks?: SubtaskData[];
   isSubtask?: boolean;
   includesSubtasks?: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }) {
   const [pending, startT] = useTransition();
   const [kind, setKind] = useState<HourKind>("projeto");
   const [manualOpen, setManualOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [subtaskOpen, setSubtaskOpen] = useState(false);
+
+  const hasSubtasks = !!subtasks && subtasks.length > 0;
+  const canCollapse = hasSubtasks && !!onToggleCollapse;
+  const subtasksVisible = !canCollapse || !collapsed;
+
+  function handleDelete() {
+    const message = hasSubtasks
+      ? "Excluir esta tarefa? As subtarefas dentro dela também serão excluídas."
+      : "Excluir esta tarefa?";
+    if (confirm(message)) {
+      startT(() => deleteTask(task.id, task.project_id));
+    }
+  }
 
   return (
     <div
@@ -114,21 +131,19 @@ export default function TaskItem({
         </div>
 
         {canManage && (
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => setEditOpen((v) => !v)}
-              title="Editar tarefa"
-              className="text-grafite/50 hover:text-roxo text-sm"
+              className="text-xs text-grafite/60 hover:text-roxo"
             >
-              ✏️
+              Editar
             </button>
             <button
-              onClick={() => startT(() => deleteTask(task.id, task.project_id))}
+              onClick={handleDelete}
               disabled={pending}
-              title="Apagar tarefa"
-              className="text-grafite/40 hover:text-magenta text-sm"
+              className="text-xs text-grafite/60 hover:text-magenta"
             >
-              ✕
+              Excluir
             </button>
           </div>
         )}
@@ -419,19 +434,31 @@ export default function TaskItem({
       )}
 
       {/* Subtarefas */}
-      {subtasks && subtasks.length > 0 && (
-        <div className="mt-3 space-y-2 pl-3 border-l-2 border-gray-100">
-          {subtasks.map((s) => (
-            <TaskItem
-              key={s.task.id}
-              task={s.task}
-              seconds={s.seconds}
-              isActive={s.isActive}
-              canManage={canManage}
-              members={members}
-              isSubtask
-            />
-          ))}
+      {hasSubtasks && (
+        <div className="mt-3">
+          {canCollapse && (
+            <button
+              onClick={onToggleCollapse}
+              className="text-xs text-grafite/60 hover:text-roxo mb-2"
+            >
+              {collapsed ? "▸ Mostrar" : "▾ Ocultar"} subtarefas ({subtasks!.length})
+            </button>
+          )}
+          {subtasksVisible && (
+            <div className="space-y-2 pl-3 border-l-2 border-gray-100">
+              {subtasks!.map((s) => (
+                <TaskItem
+                  key={s.task.id}
+                  task={s.task}
+                  seconds={s.seconds}
+                  isActive={s.isActive}
+                  canManage={canManage}
+                  members={members}
+                  isSubtask
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
