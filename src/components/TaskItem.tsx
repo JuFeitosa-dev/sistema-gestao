@@ -21,6 +21,7 @@ import {
   type Member,
 } from "@/lib/types";
 import Badge from "./Badge";
+import RichText from "./RichText";
 
 export type Task = {
   id: string;
@@ -110,7 +111,10 @@ export default function TaskItem({
             <p className="text-xs text-grafite/60 mt-0.5">{projectName}</p>
           )}
           {task.description && (
-            <p className="text-sm text-grafite/80 mt-1">{task.description}</p>
+            <RichText
+              text={task.description}
+              className="text-sm text-grafite/80 mt-1"
+            />
           )}
           <div className="flex items-center gap-3 flex-wrap text-xs text-grafite/70 mt-2">
             {task.assigneeName && <span>👤 {task.assigneeName}</span>}
@@ -173,9 +177,10 @@ export default function TaskItem({
             <label className="block text-xs mb-1">Descrição</label>
             <textarea
               name="description"
-              rows={2}
+              rows={4}
               defaultValue={task.description ?? ""}
               className={inputClass}
+              placeholder="Use Enter para separar em parágrafos. Links (https://...) ficam clicáveis."
             />
           </div>
           <div className="grid sm:grid-cols-3 gap-3">

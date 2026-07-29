@@ -45,7 +45,12 @@ export default function NewTaskForm({
 
       <div>
         <label className="block text-sm mb-1">Descrição (opcional)</label>
-        <textarea name="description" rows={2} className={inputClass} />
+        <textarea
+          name="description"
+          rows={4}
+          className={inputClass}
+          placeholder="Use Enter para separar em parágrafos. Links (https://...) ficam clicáveis."
+        />
       </div>
 
       <div className="grid sm:grid-cols-3 gap-3">
